@@ -1,49 +1,13 @@
 import time
 import sys
 
-from domain.car import Car
-from domain.parts import CarType, Engine, BrakeSystem, SteeringSystem
+from domain.car_builder import CarBuilder
+from domain.parts import Engine
 from domain.compatibility import CompatibilityChecker
 
 CLEAR_SCREEN = "\033[H\033[2J"
 
-CarType_Q = 0
-Engine_Q = 1
-brakeSystem_Q = 2
-SteeringSystem_Q = 3
-Run_Test = 4
-
-SEDAN = 1
-SUV = 2
-TRUCK = 3
-
-GM = 1
-TOYOTA = 2
-WIA = 3
-
-MANDO = 1
-CONTINENTAL = 2
-BOSCH_B = 3
-
-BOSCH_S = 1
-MOBIS = 2
-
-q0 = 0
-q1 = 0
-q2 = 0
-q3 = 0
-q4 = 0
-
 _checker = CompatibilityChecker()
-
-
-def _car_from_globals():
-    return Car(
-        car_type=CarType(q0) if q0 else None,
-        engine=Engine(q1) if q1 else None,
-        brake=BrakeSystem(q2) if q2 else None,
-        steering=SteeringSystem(q3) if q3 else None,
-    )
 
 def delay(ms):
     t = ms / 1000.0
@@ -114,96 +78,55 @@ def is_valid_range(step, ans):
             return False
     return True
 
-def select_car_type(a):
-    global q0
-    q0 = a
-    if a == 1:
-        print("차량 타입으로 Sedan을 선택하셨습니다.")
-    elif a == 2:
-        print("차량 타입으로 SUV을 선택하셨습니다.")
-    elif a == 3:
-        print("차량 타입으로 Truck을 선택하셨습니다.")
+def select_car_type(builder, a):
+    builder.set_car_type(a)
+    print(f"차량 타입으로 {builder.car.car_type.label}을 선택하셨습니다.")
 
-def select_engine(a):
-    global q1
-    q1 = a
-    if a == 1:
-        print("GM 엔진을 선택하셨습니다.")
-    elif a == 2:
-        print("TOYOTA 엔진을 선택하셨습니다.")
-    elif a == 3:
-        print("WIA 엔진을 선택하셨습니다.")
-    elif a == 4:
+def select_engine(builder, a):
+    builder.set_engine(a)
+    engine = builder.car.engine
+    if engine == Engine.BROKEN:
         print("고장난 엔진을 선택하셨습니다.")
+    else:
+        print(f"{engine.label} 엔진을 선택하셨습니다.")
 
-def select_brake(a):
-    global q2
-    q2 = a
-    if a == 1:
-        print("MANDO 제동장치를 선택하셨습니다.")
-    elif a == 2:
-        print("CONTINENTAL 제동장치를 선택하셨습니다.")
-    elif a == 3:
-        print("BOSCH 제동장치를 선택하셨습니다.")
+def select_brake(builder, a):
+    builder.set_brake(a)
+    print(f"{builder.car.brake.label} 제동장치를 선택하셨습니다.")
 
-def select_steering(a):
-    global q3
-    q3 = a
-    if a == 1:
-        print("BOSCH 조향장치를 선택하셨습니다.")
-    elif a == 2:
-        print("MOBIS 조향장치를 선택하셨습니다.")
+def select_steering(builder, a):
+    builder.set_steering(a)
+    print(f"{builder.car.steering.label} 조향장치를 선택하셨습니다.")
 
-def is_valid_check():
-    return _checker.check(_car_from_globals()).passed
+def is_valid_check(car):
+    return _checker.check(car).passed
 
-def run_produced_car():
-    if not is_valid_check():
+def run_produced_car(car):
+    if not is_valid_check(car):
         print("자동차가 동작되지 않습니다")
         return
-    if q1 == 4:
+    if car.engine == Engine.BROKEN:
         print("엔진이 고장나있습니다.")
         print("자동차가 움직이지 않습니다.")
         return
 
-    if q0 == 1:
-        print("Car Type : Sedan")
-    elif q0 == 2:
-        print("Car Type : SUV")
-    elif q0 == 3:
-        print("Car Type : Truck")
-
-    if q1 == 1:
-        print("Engine   : GM")
-    elif q1 == 2:
-        print("Engine   : TOYOTA")
-    elif q1 == 3:
-        print("Engine   : WIA")
-
-    if q2 == 1:
-        print("Brake    : Mando")
-    elif q2 == 2:
-        print("Brake    : Continental")
-    elif q2 == 3:
-        print("Brake    : Bosch")
-
-    if q3 == 1:
-        print("Steering : Bosch")
-    elif q3 == 2:
-        print("Steering : Mobis")
-
+    print(f"Car Type : {car.car_type.label}")
+    print(f"Engine   : {car.engine.label}")
+    print(f"Brake    : {car.brake.label}")
+    print(f"Steering : {car.steering.label}")
     print("자동차가 동작됩니다.")
 
-def test_produced_car():
-    result = _checker.check(_car_from_globals())
+def test_produced_car(car):
+    result = _checker.check(car)
     if result.passed:
         print("PASS")
     else:
         print(f"FAIL\n{result.reason}")
 
 def main():
-    step = 0
+    builder = CarBuilder()
     while True:
+        step = builder.current_step
         show_menu(step)
         buf = input("INPUT > ").strip()
 
@@ -223,36 +146,29 @@ def main():
             continue
 
         if ans == 0:
-            if step == 4:
-                step = 0
-            elif step > 0:
-                step = step - 1
+            builder.back()
             continue
 
         if step == 0:
-            select_car_type(ans)
+            select_car_type(builder, ans)
             delay(800)
-            step = 1
         elif step == 1:
-            select_engine(ans)
+            select_engine(builder, ans)
             delay(800)
-            step = 2
         elif step == 2:
-            select_brake(ans)
+            select_brake(builder, ans)
             delay(800)
-            step = 3
         elif step == 3:
-            select_steering(ans)
+            select_steering(builder, ans)
             delay(800)
-            step = 4
         elif step == 4:
             if ans == 1:
-                run_produced_car()
+                run_produced_car(builder.car)
                 delay(2000)
             elif ans == 2:
                 print("Test...")
                 delay(1500)
-                test_produced_car()
+                test_produced_car(builder.car)
                 delay(2000)
 
 if __name__ == "__main__":
