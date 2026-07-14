@@ -1,6 +1,10 @@
 import time
 import sys
 
+from domain.car import Car
+from domain.parts import CarType, Engine, BrakeSystem, SteeringSystem
+from domain.compatibility import CompatibilityChecker
+
 CLEAR_SCREEN = "\033[H\033[2J"
 
 CarType_Q = 0
@@ -29,6 +33,17 @@ q1 = 0
 q2 = 0
 q3 = 0
 q4 = 0
+
+_checker = CompatibilityChecker()
+
+
+def _car_from_globals():
+    return Car(
+        car_type=CarType(q0) if q0 else None,
+        engine=Engine(q1) if q1 else None,
+        brake=BrakeSystem(q2) if q2 else None,
+        steering=SteeringSystem(q3) if q3 else None,
+    )
 
 def delay(ms):
     t = ms / 1000.0
@@ -140,17 +155,7 @@ def select_steering(a):
         print("MOBIS 조향장치를 선택하셨습니다.")
 
 def is_valid_check():
-    if q0 == SEDAN and q2 == CONTINENTAL:
-        return False
-    if q0 == SUV and q1 == TOYOTA:
-        return False
-    if q0 == TRUCK and q1 == WIA:
-        return False
-    if q0 == TRUCK and q2 == MANDO:
-        return False
-    if q2 == BOSCH_B and q3 != BOSCH_S:
-        return False
-    return True
+    return _checker.check(_car_from_globals()).passed
 
 def run_produced_car():
     if not is_valid_check():
@@ -190,18 +195,11 @@ def run_produced_car():
     print("자동차가 동작됩니다.")
 
 def test_produced_car():
-    if q0 == SEDAN and q2 == CONTINENTAL:
-        print("FAIL\nSedan에는 Continental제동장치 사용 불가")
-    elif q0 == SUV and q1 == TOYOTA:
-        print("FAIL\nSUV에는 TOYOTA엔진 사용 불가")
-    elif q0 == TRUCK and q1 == WIA:
-        print("FAIL\nTruck에는 WIA엔진 사용 불가")
-    elif q0 == TRUCK and q2 == MANDO:
-        print("FAIL\nTruck에는 Mando제동장치 사용 불가")
-    elif q2 == BOSCH_B and q3 != BOSCH_S:
-        print("FAIL\nBosch제동장치에는 Bosch조향장치 이외 사용 불가")
-    else:
+    result = _checker.check(_car_from_globals())
+    if result.passed:
         print("PASS")
+    else:
+        print(f"FAIL\n{result.reason}")
 
 def main():
     step = 0
